@@ -1,0 +1,38 @@
+apiVersion: v2
+name: hub
+description: Helm chart for Formbricks Hub - Unified Experience Data Platform
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+
+keywords:
+  - formbricks
+  - experience-data
+  - feedback
+  - analytics
+  - ai
+  - postgresql
+  - cloudnativepg
+
+home: https://github.com/formbricks/hub
+sources:
+  - https://github.com/formbricks/hub
+  - https://github.com/formbricks/hub-helm
+
+maintainers:
+  - name: Formbricks Team
+    email: hola@formbricks.com
+    url: https://formbricks.com
+
+annotations:
+  artifacthub.io/category: integration-delivery
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/links: |
+    - name: Documentation
+      url: https://github.com/formbricks/hub
+    - name: Source Code
+      url: https://github.com/formbricks/hub
+  artifacthub.io/operator: "false"
+  artifacthub.io/prerelease: "false"
+  artifacthub.io/recommendations: |
+    - url: https://artifacthub.io/packages/olm/cloudnative-pg/cloudnative-pg

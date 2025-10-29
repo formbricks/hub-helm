@@ -1,0 +1,40 @@
+# CI/CD testing configuration
+# Minimal resources for testing in CI pipeline
+
+hub:
+  replicaCount: 1
+
+  image:
+    pullPolicy: IfNotPresent
+
+  config:
+    environment: "development"
+    logLevel: "debug"
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  autoscaling:
+    enabled: false
+
+  podDisruptionBudget:
+    enabled: false
+
+cloudnativepg:
+  enabled: true
+  cluster:
+    instances: 1
+    storage:
+      size: 1Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi

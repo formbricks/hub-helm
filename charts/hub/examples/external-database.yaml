@@ -1,0 +1,26 @@
+# Configuration using external managed database
+# For use with AWS RDS, Google Cloud SQL, Azure Database, etc.
+
+hub:
+  replicaCount: 2
+
+  config:
+    environment: "production"
+
+    apiKey:
+      existingSecret:
+        name: "hub-secrets"
+        key: "api-key"
+
+externalDatabase:
+  host: "hub-db.xxxx.us-east-1.rds.amazonaws.com"
+  port: 5432
+  database: "hub"
+  username: "formbricks"
+  existingSecret:
+    name: "hub-db-credentials"
+    key: "password"
+  sslMode: "require"
+
+cloudnativepg:
+  enabled: false

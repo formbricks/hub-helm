@@ -1,0 +1,29 @@
+# Minimal configuration for testing/development
+# Uses external database and minimal resources
+
+hub:
+  replicaCount: 1
+
+  config:
+    environment: "development"
+    logLevel: "debug"
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+  podDisruptionBudget:
+    enabled: false
+
+externalDatabase:
+  host: "postgres.example.com"
+  port: 5432
+  database: "hub"
+  username: "formbricks"
+  existingSecret:
+    name: "hub-db-credentials"
+    key: "password"

@@ -1,0 +1,334 @@
+# Default values for hub chart
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+## Hub application configuration
+hub:
+  ## Number of replicas
+  replicaCount: 2
+
+  ## Hub container image configuration
+  image:
+    repository: ghcr.io/formbricks/hub
+    pullPolicy: IfNotPresent
+    ## Overrides the image tag whose default is the chart appVersion
+    tag: ""
+
+  ## Image pull secrets for private registries
+  imagePullSecrets: []
+
+  ## Override the name of the chart
+  nameOverride: ""
+  ## Override the full name of the release
+  fullnameOverride: ""
+
+  ## Hub application configuration
+  config:
+    ## Server configuration
+    port: 8080
+    host: "0.0.0.0"
+    environment: "production"
+
+    ## API authentication (optional)
+    ## Leave empty to disable API key authentication
+    apiKey:
+      ## Direct value (not recommended for production)
+      value: ""
+      ## Reference to existing secret
+      existingSecret:
+        name: ""
+        key: "api-key"
+
+    ## Database connection configuration
+    ## If cloudnativepg.enabled=true, this will be auto-configured
+    ## For external database, provide full connection string
+    databaseUrl: ""
+
+    ## Database connection pool settings
+    db:
+      maxOpenConns: 25
+      maxIdleConns: 5
+      connMaxLifetime: 5
+      connMaxIdleTime: 5
+
+    ## Webhook configuration (optional)
+    ## Comma-separated list of webhook URLs
+    webhookUrls: ""
+
+    ## OpenAI configuration for AI enrichment (optional)
+    openai:
+      enabled: false
+
+      ## OpenAI API Key configuration (choose one method)
+      apiKey:
+        ## Option 1: Direct value (not recommended for production)
+        value: ""
+
+        ## Option 2: Reference to existing Kubernetes secret
+        existingSecret:
+          name: ""
+          key: "openai-api-key"
+
+        ## Option 3: External Secrets Operator integration
+        ## Set this to true to create an ExternalSecret resource
+        externalSecret:
+          enabled: false
+          ## External Secrets backend configuration
+          secretStore:
+            name: ""
+            kind: SecretStore  # or ClusterSecretStore
+          ## Backend-specific configuration (AWS Secrets Manager, Vault, etc.)
+          remoteRef:
+            key: ""
+            property: ""
+
+      ## OpenAI model configuration
+      enrichmentModel: "gpt-4o-mini"
+      embeddingModel: "text-embedding-3-small"
+      enrichmentTimeout: 10
+      enrichmentWorkers: 3
+      enrichmentPollInterval: 1
+
+    ## Rate limiting configuration
+    rateLimit:
+      perIP: 100
+      burst: 200
+      global: 1000
+      globalBurst: 2000
+
+    ## Logging configuration
+    logLevel: "info"
+
+  ## Service account configuration
+  serviceAccount:
+    ## Specifies whether a service account should be created
+    create: true
+    ## Automatically mount a ServiceAccount's API credentials
+    automount: true
+    ## Annotations to add to the service account
+    annotations: {}
+    ## The name of the service account to use.
+    ## If not set and create is true, a name is generated using the fullname template
+    name: ""
+
+  ## Pod annotations
+  podAnnotations: {}
+
+  ## Pod labels
+  podLabels: {}
+
+  ## Pod security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+
+  ## Container security context
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    readOnlyRootFilesystem: true
+
+  ## Resource requests and limits
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  ## Liveness probe configuration
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  ## Readiness probe configuration
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  ## Autoscaling configuration
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  ## Additional volumes
+  volumes: []
+  ## Additional volume mounts
+  volumeMounts: []
+
+  ## Node selector
+  nodeSelector: {}
+
+  ## Tolerations
+  tolerations: []
+
+  ## Affinity rules
+  affinity: {}
+
+  ## Pod disruption budget
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+## Service configuration
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+  annotations: {}
+
+## Ingress configuration
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: hub.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+    # - secretName: hub-tls
+    #   hosts:
+    #     - hub.example.com
+
+## CloudNativePG configuration
+## Requires CloudNativePG operator to be installed in the cluster
+## Installation: kubectl apply -f https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/main/releases/cnpg-1.25.0.yaml
+cloudnativepg:
+  ## Enable CloudNativePG cluster deployment
+  enabled: false
+
+  ## PostgreSQL cluster configuration
+  cluster:
+    ## Number of instances in the cluster
+    instances: 3
+
+    ## PostgreSQL version
+    imageName: ghcr.io/cloudnative-pg/postgresql:18
+
+    ## Storage configuration
+    storage:
+      size: 10Gi
+      storageClass: ""
+
+    ## PostgreSQL configuration
+    postgresql:
+      parameters:
+        max_connections: "100"
+        shared_buffers: "256MB"
+        effective_cache_size: "1GB"
+        maintenance_work_mem: "64MB"
+        checkpoint_completion_target: "0.9"
+        wal_buffers: "16MB"
+        default_statistics_target: "100"
+        random_page_cost: "1.1"
+        effective_io_concurrency: "200"
+        work_mem: "2621kB"
+        min_wal_size: "1GB"
+        max_wal_size: "4GB"
+        shared_preload_libraries: "vector"
+
+    ## Bootstrap configuration
+    bootstrap:
+      initdb:
+        database: hub
+        owner: formbricks
+        postInitSQL:
+          - CREATE EXTENSION IF NOT EXISTS vector;
+
+    ## Backup configuration (optional)
+    backup:
+      enabled: false
+      ## Backup schedule (cron format)
+      schedule: "0 0 * * *"
+      ## Backup retention policy
+      retentionPolicy: "30d"
+      ## S3 or compatible object storage configuration
+      barmanObjectStore:
+        destinationPath: ""
+        s3Credentials:
+          accessKeyId:
+            name: ""
+            key: ""
+          secretAccessKey:
+            name: ""
+            key: ""
+        wal:
+          compression: gzip
+
+    ## Monitoring configuration
+    monitoring:
+      enabled: false
+      ## Create PodMonitor resource for Prometheus
+      podMonitorEnabled: false
+
+    ## Resource configuration for PostgreSQL pods
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+## External PostgreSQL database configuration
+## Use this when cloudnativepg.enabled=false and you have an external database
+externalDatabase:
+  ## PostgreSQL host
+  host: ""
+  ## PostgreSQL port
+  port: 5432
+  ## Database name
+  database: hub
+  ## Database user
+  username: formbricks
+  ## Database password (use existingSecret for production)
+  password: ""
+  ## Existing secret containing database password
+  ## Secret should contain 'password' key
+  existingSecret:
+    name: ""
+    key: "password"
+  ## SSL mode (disable, require, verify-ca, verify-full)
+  sslMode: disable
+
+## ServiceMonitor configuration for Prometheus Operator
+serviceMonitor:
+  enabled: false
+  ## Additional labels for ServiceMonitor
+  additionalLabels: {}
+  ## Scrape interval
+  interval: 30s
+  ## Scrape timeout
+  scrapeTimeout: 10s
+
+## Network policy configuration
+networkPolicy:
+  enabled: false
+  ## Ingress rules
+  ingress: []
+  ## Egress rules
+  egress: []

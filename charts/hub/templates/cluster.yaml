@@ -1,0 +1,70 @@
+{{- if .Values.cloudnativepg.enabled }}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ include "hub.fullname" . }}
+  labels:
+    {{- include "hub.labels" . | nindent 4 }}
+spec:
+  instances: {{ .Values.cloudnativepg.cluster.instances }}
+
+  imageName: {{ .Values.cloudnativepg.cluster.imageName }}
+
+  storage:
+    size: {{ .Values.cloudnativepg.cluster.storage.size }}
+    {{- if .Values.cloudnativepg.cluster.storage.storageClass }}
+    storageClass: {{ .Values.cloudnativepg.cluster.storage.storageClass }}
+    {{- end }}
+
+  postgresql:
+    parameters:
+      {{- toYaml .Values.cloudnativepg.cluster.postgresql.parameters | nindent 6 }}
+
+  bootstrap:
+    initdb:
+      database: {{ .Values.cloudnativepg.cluster.bootstrap.initdb.database }}
+      owner: {{ .Values.cloudnativepg.cluster.bootstrap.initdb.owner }}
+      {{- with .Values.cloudnativepg.cluster.bootstrap.initdb.postInitSQL }}
+      postInitSQL:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+  {{- if .Values.cloudnativepg.cluster.backup.enabled }}
+  backup:
+    barmanObjectStore:
+      destinationPath: {{ .Values.cloudnativepg.cluster.backup.barmanObjectStore.destinationPath }}
+      s3Credentials:
+        accessKeyId:
+          name: {{ .Values.cloudnativepg.cluster.backup.barmanObjectStore.s3Credentials.accessKeyId.name }}
+          key: {{ .Values.cloudnativepg.cluster.backup.barmanObjectStore.s3Credentials.accessKeyId.key }}
+        secretAccessKey:
+          name: {{ .Values.cloudnativepg.cluster.backup.barmanObjectStore.s3Credentials.secretAccessKey.name }}
+          key: {{ .Values.cloudnativepg.cluster.backup.barmanObjectStore.s3Credentials.secretAccessKey.key }}
+      wal:
+        compression: {{ .Values.cloudnativepg.cluster.backup.barmanObjectStore.wal.compression }}
+    retentionPolicy: {{ .Values.cloudnativepg.cluster.backup.retentionPolicy }}
+  {{- end }}
+
+  {{- if .Values.cloudnativepg.cluster.monitoring.enabled }}
+  monitoring:
+    enablePodMonitor: {{ .Values.cloudnativepg.cluster.monitoring.podMonitorEnabled }}
+  {{- end }}
+
+  resources:
+    {{- toYaml .Values.cloudnativepg.cluster.resources | nindent 4 }}
+
+---
+{{- if .Values.cloudnativepg.cluster.backup.enabled }}
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: {{ include "hub.fullname" . }}-backup
+  labels:
+    {{- include "hub.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.cloudnativepg.cluster.backup.schedule | quote }}
+  backupOwnerReference: self
+  cluster:
+    name: {{ include "hub.fullname" . }}
+{{- end }}
+{{- end }}

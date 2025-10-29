@@ -1,0 +1,138 @@
+# Production configuration with high availability
+# CloudNativePG, autoscaling, monitoring, and ingress enabled
+
+hub:
+  replicaCount: 3
+
+  image:
+    pullPolicy: Always
+    tag: "v0.1.0"
+
+  config:
+    environment: "production"
+    logLevel: "info"
+
+    apiKey:
+      existingSecret:
+        name: "hub-api-credentials"
+        key: "api-key"
+
+    openai:
+      enabled: true
+      apiKey:
+        externalSecret:
+          enabled: true
+          secretStore:
+            name: "aws-secrets-store"
+            kind: "ClusterSecretStore"
+          remoteRef:
+            key: "prod/hub/openai-api-key"
+      enrichmentWorkers: 5
+
+    rateLimit:
+      perIP: 200
+      burst: 400
+      global: 2000
+      globalBurst: 4000
+
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 75
+
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+              - hub
+          topologyKey: kubernetes.io/hostname
+
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+
+service:
+  type: ClusterIP
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+  hosts:
+    - host: hub.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: hub-tls
+      hosts:
+        - hub.example.com
+
+cloudnativepg:
+  enabled: true
+  cluster:
+    instances: 3
+    imageName: ghcr.io/cloudnative-pg/postgresql:18
+    storage:
+      size: 50Gi
+      storageClass: "gp3"
+    postgresql:
+      parameters:
+        max_connections: "200"
+        shared_buffers: "512MB"
+        effective_cache_size: "2GB"
+        maintenance_work_mem: "128MB"
+        shared_preload_libraries: "vector"
+    backup:
+      enabled: true
+      schedule: "0 2 * * *"
+      retentionPolicy: "30d"
+      barmanObjectStore:
+        destinationPath: "s3://my-backup-bucket/hub/"
+        s3Credentials:
+          accessKeyId:
+            name: "backup-s3-creds"
+            key: "ACCESS_KEY_ID"
+          secretAccessKey:
+            name: "backup-s3-creds"
+            key: "SECRET_ACCESS_KEY"
+        wal:
+          compression: gzip
+    monitoring:
+      enabled: true
+      podMonitorEnabled: true
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    release: prometheus
+  interval: 30s
+  scrapeTimeout: 10s

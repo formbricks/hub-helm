@@ -1,0 +1,147 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hub.fullname" . }}
+  labels:
+    {{- include "hub.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.hub.autoscaling.enabled }}
+  replicas: {{ .Values.hub.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "hub.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.hub.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "hub.labels" . | nindent 8 }}
+        {{- with .Values.hub.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.hub.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "hub.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.hub.podSecurityContext | nindent 8 }}
+      containers:
+      - name: hub
+        securityContext:
+          {{- toYaml .Values.hub.securityContext | nindent 12 }}
+        image: {{ include "hub.image" . }}
+        imagePullPolicy: {{ .Values.hub.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.hub.config.port }}
+          protocol: TCP
+        livenessProbe:
+          {{- toYaml .Values.hub.livenessProbe | nindent 12 }}
+        readinessProbe:
+          {{- toYaml .Values.hub.readinessProbe | nindent 12 }}
+        env:
+        - name: SERVICE_PORT
+          value: {{ .Values.hub.config.port | quote }}
+        - name: SERVICE_HOST
+          value: {{ .Values.hub.config.host | quote }}
+        - name: SERVICE_ENVIRONMENT
+          value: {{ .Values.hub.config.environment | quote }}
+        - name: SERVICE_LOG_LEVEL
+          value: {{ .Values.hub.config.logLevel | quote }}
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "hub.postgresql.secretName" . }}
+              key: {{ include "hub.postgresql.secretKey" . }}
+        - name: SERVICE_DATABASE_URL
+          value: {{ include "hub.databaseUrl" . | quote }}
+        - name: SERVICE_DB_MAX_OPEN_CONNS
+          value: {{ .Values.hub.config.db.maxOpenConns | quote }}
+        - name: SERVICE_DB_MAX_IDLE_CONNS
+          value: {{ .Values.hub.config.db.maxIdleConns | quote }}
+        - name: SERVICE_DB_CONN_MAX_LIFETIME
+          value: {{ .Values.hub.config.db.connMaxLifetime | quote }}
+        - name: SERVICE_DB_CONN_MAX_IDLE_TIME
+          value: {{ .Values.hub.config.db.connMaxIdleTime | quote }}
+        {{- if or .Values.hub.config.apiKey.value .Values.hub.config.apiKey.existingSecret.name }}
+        - name: SERVICE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              {{- if .Values.hub.config.apiKey.existingSecret.name }}
+              name: {{ .Values.hub.config.apiKey.existingSecret.name }}
+              key: {{ .Values.hub.config.apiKey.existingSecret.key }}
+              {{- else }}
+              name: {{ include "hub.fullname" . }}
+              key: api-key
+              {{- end }}
+        {{- end }}
+        {{- if .Values.hub.config.webhookUrls }}
+        - name: SERVICE_WEBHOOK_URLS
+          value: {{ .Values.hub.config.webhookUrls | quote }}
+        {{- end }}
+        - name: SERVICE_RATE_LIMIT_PER_IP
+          value: {{ .Values.hub.config.rateLimit.perIP | quote }}
+        - name: SERVICE_RATE_LIMIT_BURST
+          value: {{ .Values.hub.config.rateLimit.burst | quote }}
+        - name: SERVICE_RATE_LIMIT_GLOBAL
+          value: {{ .Values.hub.config.rateLimit.global | quote }}
+        - name: SERVICE_RATE_LIMIT_GLOBAL_BURST
+          value: {{ .Values.hub.config.rateLimit.globalBurst | quote }}
+        {{- if .Values.hub.config.openai.enabled }}
+        - name: SERVICE_OPEN_AI_KEY
+          valueFrom:
+            secretKeyRef:
+              {{- if .Values.hub.config.openai.apiKey.existingSecret.name }}
+              name: {{ .Values.hub.config.openai.apiKey.existingSecret.name }}
+              key: {{ .Values.hub.config.openai.apiKey.existingSecret.key }}
+              {{- else if .Values.hub.config.openai.apiKey.externalSecret.enabled }}
+              name: {{ include "hub.fullname" . }}-openai
+              key: openai-api-key
+              {{- else }}
+              name: {{ include "hub.fullname" . }}
+              key: openai-api-key
+              {{- end }}
+        - name: SERVICE_OPENAI_ENRICHMENT_MODEL
+          value: {{ .Values.hub.config.openai.enrichmentModel | quote }}
+        - name: SERVICE_OPENAI_EMBEDDING_MODEL
+          value: {{ .Values.hub.config.openai.embeddingModel | quote }}
+        - name: SERVICE_ENRICHMENT_TIMEOUT
+          value: {{ .Values.hub.config.openai.enrichmentTimeout | quote }}
+        - name: SERVICE_ENRICHMENT_WORKERS
+          value: {{ .Values.hub.config.openai.enrichmentWorkers | quote }}
+        - name: SERVICE_ENRICHMENT_POLL_INTERVAL
+          value: {{ .Values.hub.config.openai.enrichmentPollInterval | quote }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.hub.resources | nindent 12 }}
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        {{- with .Values.hub.volumeMounts }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      {{- with .Values.hub.volumes }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+      {{- with .Values.hub.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.hub.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.hub.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

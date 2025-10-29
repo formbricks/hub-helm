@@ -29,6 +29,7 @@ cloudnativepg:
   enabled: true
   cluster:
     instances: 1
+    imageName: pgvector/pgvector:pg18
     storage:
       size: 1Gi
     resources:

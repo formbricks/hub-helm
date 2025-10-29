@@ -226,8 +226,8 @@ cloudnativepg:
     ## Number of instances in the cluster
     instances: 3
 
-    ## PostgreSQL version with pgvector extension
-    imageName: pgvector/pgvector:pg18
+    ## PostgreSQL version (standard image includes pgvector)
+    imageName: ghcr.io/cloudnative-pg/postgresql:17.2-standard-bookworm
 
     ## Storage configuration
     storage:

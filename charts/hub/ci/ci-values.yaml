@@ -29,7 +29,7 @@ cloudnativepg:
   enabled: true
   cluster:
     instances: 1
-    imageName: pgvector/pgvector:pg18
+    imageName: ghcr.io/cloudnative-pg/postgresql:17.2-standard-bookworm
     storage:
       size: 1Gi
     resources:

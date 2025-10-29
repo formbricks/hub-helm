@@ -23,6 +23,20 @@ on:
 jobs:
   lint-test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg18
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_USER: formbricks
+          POSTGRES_DB: hub
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -55,24 +69,32 @@ jobs:
           helm template test charts/hub --values examples/production-values.yaml > /dev/null
           helm template test charts/hub --values examples/external-database.yaml > /dev/null
 
+      - name: Initialize pgvector extension
+        run: |
+          PGPASSWORD=testpassword psql -h localhost -U formbricks -d hub -c "CREATE EXTENSION IF NOT EXISTS vector;"
+          PGPASSWORD=testpassword psql -h localhost -U formbricks -d hub -c "\dx"
+
       - name: Create kind cluster
         uses: helm/kind-action@v1.10.0
         with:
           cluster_name: helm-test
 
-      - name: Install CloudNativePG operator
+      - name: Test chart with external database
         run: |
-          kubectl apply --server-side -f \
-            https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.25/releases/cnpg-1.25.0.yaml
-          kubectl wait --for=condition=Available --timeout=300s \
-            deployment/cnpg-controller-manager -n cnpg-system
+          # Install chart with external database (GitHub Actions service)
+          helm install hub-test charts/hub \
+            --set cloudnativepg.enabled=false \
+            --set externalDatabase.host=postgres \
+            --set externalDatabase.port=5432 \
+            --set externalDatabase.database=hub \
+            --set externalDatabase.username=formbricks \
+            --set externalDatabase.password=testpassword \
+            --set hub.replicaCount=1 \
+            --set hub.resources.requests.cpu=100m \
+            --set hub.resources.requests.memory=128Mi \
+            --set hub.podDisruptionBudget.enabled=false \
+            --wait --timeout=5m
 
-      - name: Run chart-testing (install)
-        run: ct install --charts charts/hub --helm-extra-set-args "--timeout=5m"
-
-      - name: Test chart with CI values
-        run: |
-          helm install hub-test charts/hub --values charts/hub/ci/ci-values.yaml --wait --timeout=5m
           kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=hub --timeout=300s
 
           # Port forward and test health endpoint

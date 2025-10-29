@@ -68,26 +68,24 @@ jobs:
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
 
           if [ -z "$PREVIOUS_TAG" ]; then
-            # First release - get all commits
-            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+            echo "First release - generating full history"
+            git log --pretty=format:"- %s (%h)" --no-merges > changelog.txt
           else
-            # Get commits since last tag
-            CHANGELOG=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+            echo "Generating changelog from ${PREVIOUS_TAG} to HEAD"
+            git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges > changelog.txt
           fi
 
-          # Save to file for use in release
-          echo "$CHANGELOG" > changelog.txt
-
-          # Output for GitHub Actions
           echo "previous_tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: ncipollo/release-action@v1
         with:
-          files: |
-            hub-*.tgz
+          artifacts: "hub-*.tgz"
+          bodyFile: ""
           body: |
-            ## Helm Chart Release ${{ steps.version.outputs.version }}
+            ## Helm Chart for Formbricks Hub
+
+            **Version:** ${{ steps.version.outputs.version }}
 
             ### Installation
 
@@ -101,16 +99,23 @@ jobs:
             helm pull oci://ghcr.io/${{ github.repository_owner }}/charts/hub --version ${{ steps.version.outputs.version }}
             ```
 
+            ### Configuration
+
+            See [values.yaml](https://github.com/${{ github.repository }}/blob/v${{ steps.version.outputs.version }}/charts/hub/values.yaml) for all configuration options.
+
+            Example configurations:
+            - [Minimal (development)](https://github.com/${{ github.repository }}/blob/v${{ steps.version.outputs.version }}/examples/minimal-values.yaml)
+            - [Production (HA)](https://github.com/${{ github.repository }}/blob/v${{ steps.version.outputs.version }}/examples/production-values.yaml)
+            - [External Database](https://github.com/${{ github.repository }}/blob/v${{ steps.version.outputs.version }}/examples/external-database.yaml)
+
             ### Changes in this Release
 
-            ${{ steps.changelog.outputs.previous_tag && format('Changes since {0}:', steps.changelog.outputs.previous_tag) || 'Initial release' }}
+            ${{ steps.changelog.outputs.previous_tag != '' && format('**Changes since {0}:**', steps.changelog.outputs.previous_tag) || '**Initial release**' }}
 
-            $(cat changelog.txt)
-
-            ---
-            **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ steps.changelog.outputs.previous_tag }}...v${{ steps.version.outputs.version }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            ${{ steps.changelog.outputs.previous_tag != '' && format('[View full diff]({0}/compare/{1}...v{2})', github.server_url, steps.changelog.outputs.previous_tag, steps.version.outputs.version) || '' }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          generateReleaseNotes: true
+          makeLatest: true
 
       - name: Chart release summary
         run: |

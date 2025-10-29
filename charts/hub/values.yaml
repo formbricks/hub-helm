@@ -249,7 +249,6 @@ cloudnativepg:
         work_mem: "2621kB"
         min_wal_size: "1GB"
         max_wal_size: "4GB"
-        shared_preload_libraries: "vector"
 
     ## Bootstrap configuration
     bootstrap:

@@ -103,7 +103,6 @@ cloudnativepg:
         shared_buffers: "512MB"
         effective_cache_size: "2GB"
         maintenance_work_mem: "128MB"
-        shared_preload_libraries: "vector"
     backup:
       enabled: true
       schedule: "0 2 * * *"

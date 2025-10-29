@@ -81,10 +81,17 @@ jobs:
 
       - name: Test chart with external database
         run: |
-          # Install chart with external database (GitHub Actions service)
+          # Get Docker bridge gateway IP (how kind pods reach the host)
+          HOST_IP=$(docker network inspect bridge --format='{{(index .IPAM.Config 0).Gateway}}')
+          echo "Docker bridge gateway IP: $HOST_IP"
+
+          # Verify PostgreSQL is accessible from this IP
+          PGPASSWORD=testpassword psql -h $HOST_IP -U formbricks -d hub -c "SELECT 1;" || exit 1
+
+          # Install chart with external database
           helm install hub-test charts/hub \
             --set cloudnativepg.enabled=false \
-            --set externalDatabase.host=postgres \
+            --set externalDatabase.host=$HOST_IP \
             --set externalDatabase.port=5432 \
             --set externalDatabase.database=hub \
             --set externalDatabase.username=formbricks \

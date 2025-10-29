@@ -1,0 +1,17 @@
+{{- if .Values.cloudnativepg.enabled }}
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: {{ include "hub.fullname" . }}
+  labels:
+    {{- include "hub.labels" . | nindent 4 }}
+spec:
+  cluster:
+    name: {{ include "hub.fullname" . }}
+  name: {{ .Values.cloudnativepg.cluster.bootstrap.initdb.database }}
+  owner: {{ .Values.cloudnativepg.cluster.bootstrap.initdb.owner }}
+  ensure: present
+  extensions:
+    - name: vector
+      ensure: present
+{{- end }}

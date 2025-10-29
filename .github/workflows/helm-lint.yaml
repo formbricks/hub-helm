@@ -1,0 +1,84 @@
+name: Helm Chart Lint and Test
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**/*.yaml'
+      - '**/*.yml'
+      - '**/*.tpl'
+      - 'Chart.yaml'
+      - 'values.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - '**/*.yaml'
+      - '**/*.yml'
+      - '**/*.tpl'
+      - 'Chart.yaml'
+      - 'values.yaml'
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@v2.7.0
+
+      - name: Run chart-testing (lint)
+        run: ct lint --charts charts/hub --validate-maintainers=false
+
+      - name: Helm lint
+        run: helm lint charts/hub
+
+      - name: Helm template
+        run: |
+          helm template test charts/hub > /dev/null
+          helm template test charts/hub --values charts/hub/examples/minimal-values.yaml > /dev/null
+          helm template test charts/hub --values charts/hub/examples/production-values.yaml > /dev/null
+          helm template test charts/hub --values charts/hub/examples/external-database.yaml > /dev/null
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1.10.0
+        with:
+          cluster_name: helm-test
+
+      - name: Install CloudNativePG operator
+        run: |
+          kubectl apply --server-side -f \
+            https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.25/releases/cnpg-1.25.0.yaml
+          kubectl wait --for=condition=Available --timeout=300s \
+            deployment/cnpg-controller-manager -n cnpg-system
+
+      - name: Run chart-testing (install)
+        run: ct install --charts charts/hub --helm-extra-set-args "--timeout=5m"
+
+      - name: Test chart with CI values
+        run: |
+          helm install hub-test charts/hub --values charts/hub/ci/ci-values.yaml --wait --timeout=5m
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=hub --timeout=300s
+
+          # Port forward and test health endpoint
+          kubectl port-forward svc/hub-test 8080:80 &
+          sleep 5
+          curl -f http://localhost:8080/health || (kubectl logs -l app.kubernetes.io/name=hub && exit 1)
+
+          # Cleanup
+          helm uninstall hub-test

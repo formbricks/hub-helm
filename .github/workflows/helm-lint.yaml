@@ -51,9 +51,9 @@ jobs:
       - name: Helm template
         run: |
           helm template test charts/hub > /dev/null
-          helm template test charts/hub --values charts/hub/examples/minimal-values.yaml > /dev/null
-          helm template test charts/hub --values charts/hub/examples/production-values.yaml > /dev/null
-          helm template test charts/hub --values charts/hub/examples/external-database.yaml > /dev/null
+          helm template test charts/hub --values examples/minimal-values.yaml > /dev/null
+          helm template test charts/hub --values examples/production-values.yaml > /dev/null
+          helm template test charts/hub --values examples/external-database.yaml > /dev/null
 
       - name: Create kind cluster
         uses: helm/kind-action@v1.10.0

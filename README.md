@@ -78,7 +78,7 @@ helm lint charts/hub
 
 3. Template the chart:
 ```bash
-helm template test charts/hub --values charts/hub/examples/minimal-values.yaml
+helm template test charts/hub --values examples/minimal-values.yaml
 ```
 
 4. Test installation on a local cluster (kind/minikube):

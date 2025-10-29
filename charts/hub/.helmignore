@@ -21,22 +21,3 @@
 .idea/
 *.tmproj
 .vscode/
-# CI/CD
-.github/
-.gitlab-ci.yml
-.travis.yml
-.circleci/
-# Documentation
-docs/
-*.md
-!Chart.yaml
-!values.yaml
-# Examples and CI values
-examples/
-ci/
-# Test files
-test/
-tests/
-# License files
-LICENSE
-LICENSE.txt

@@ -93,7 +93,7 @@ cloudnativepg:
   enabled: true
   cluster:
     instances: 3
-    imageName: ghcr.io/cloudnative-pg/postgresql:18
+    imageName: ghcr.io/cloudnative-pg/postgresql:18.0-standard-bookworm
     storage:
       size: 50Gi
       storageClass: "gp3"
@@ -103,7 +103,6 @@ cloudnativepg:
         shared_buffers: "512MB"
         effective_cache_size: "2GB"
         maintenance_work_mem: "128MB"
-        shared_preload_libraries: "vector"
     backup:
       enabled: true
       schedule: "0 2 * * *"

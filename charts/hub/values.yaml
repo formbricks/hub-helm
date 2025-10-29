@@ -226,8 +226,8 @@ cloudnativepg:
     ## Number of instances in the cluster
     instances: 3
 
-    ## PostgreSQL version
-    imageName: ghcr.io/cloudnative-pg/postgresql:18
+    ## PostgreSQL version (standard image includes pgvector)
+    imageName: ghcr.io/cloudnative-pg/postgresql:18.0-standard-bookworm
 
     ## Storage configuration
     storage:
@@ -249,7 +249,6 @@ cloudnativepg:
         work_mem: "2621kB"
         min_wal_size: "1GB"
         max_wal_size: "4GB"
-        shared_preload_libraries: "vector"
 
     ## Bootstrap configuration
     bootstrap:

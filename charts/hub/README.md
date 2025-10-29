@@ -144,7 +144,7 @@ This command removes all the Kubernetes components associated with the chart and
 
 ### Production Deployment
 
-See [examples/production-values.yaml](./examples/production-values.yaml) for a complete production configuration with:
+See [examples/production-values.yaml](../../examples/production-values.yaml) for a complete production configuration with:
 - High availability (3 replicas)
 - Autoscaling
 - CloudNativePG with backups
@@ -159,7 +159,7 @@ helm install hub oci://ghcr.io/formbricks/charts/hub \
 
 ### External Database
 
-See [examples/external-database.yaml](./examples/external-database.yaml) for using a managed database service (AWS RDS, Google Cloud SQL, etc.):
+See [examples/external-database.yaml](../../examples/external-database.yaml) for using a managed database service (AWS RDS, Google Cloud SQL, etc.):
 
 ```bash
 helm install hub oci://ghcr.io/formbricks/charts/hub \
@@ -168,7 +168,7 @@ helm install hub oci://ghcr.io/formbricks/charts/hub \
 
 ### Minimal Development Setup
 
-See [examples/minimal-values.yaml](./examples/minimal-values.yaml) for a minimal configuration suitable for development:
+See [examples/minimal-values.yaml](../../examples/minimal-values.yaml) for a minimal configuration suitable for development:
 
 ```bash
 helm install hub oci://ghcr.io/formbricks/charts/hub \
